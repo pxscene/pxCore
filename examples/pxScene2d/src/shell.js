@@ -19,6 +19,8 @@ limitations under the License.
 var isDuk=(typeof Duktape != "undefined")?true:false;
 var isV8 = (typeof _isV8 != "undefined")?true:false;
 
+var defaultAppUrl = 'browser/browser.js'
+
 px.import({ scene: 'px:scene.1.js',
   log: "px:tools.../Logger.js",
   keys: 'px:tools.keys.js',
@@ -37,6 +39,15 @@ px.import({ scene: 'px:scene.1.js',
   var rtLogLevel = process.env.RT_LOG_LEVEL ?  process.env.RT_LOG_LEVEL : 'warn';
   setLoggingLevel(rtLogLevel);
 
+  var base = px.getPackageBaseFilePath()
+  defaultAppUrl = base + defaultAppUrl
+  console.log('<<**** shell base', base)
+
+  var appUrl = scene.sparkSetting('defaultAppUrl')
+  console.log("***** appUrl", appUrl)
+  defaultAppUrl = appUrl?appUrl:defaultAppUrl
+  console.log("***** defaultAppUrl", defaultAppUrl)
+
   function uncaughtException(err) {
     if (!isDuk && !isV8) {
       logger.message('error', "Received uncaught exception " + err.stack);
@@ -52,7 +63,6 @@ px.import({ scene: 'px:scene.1.js',
     process.on('unhandledRejection', unhandledRejection);
   }
 
-
   /**
    * This is helper method which resolves resource URL for scene
    * - it resolves various shortcuts using prepareUrl() method
@@ -65,6 +75,7 @@ px.import({ scene: 'px:scene.1.js',
    *
    * @returns {String} URL for a scene
    */
+  /*
   function resolveSceneUrl(url) {
     if (url && url.toLowerCase().indexOf('.js?') > 0) { // this is a js file with query params
       return url;
@@ -74,12 +85,15 @@ px.import({ scene: 'px:scene.1.js',
     }
     return url;
   }
-
+  */
+  
   // JRJR TODO had to add more modules
   var url = queryStringModule.parse(urlModule.parse(module.appSceneContext.packageUrl).query).url;
-  url = resolveSceneUrl(url);
-  var originalURL = (!url || url==="") ? "browser.js":url;
+  //url = resolveSceneUrl(url)
+  console.log('query url: ', url)
+  var originalURL = (!url || url==="") ? defaultAppUrl:url;
   logger.message('info', "url:" + originalURL);
+
 
   var    blackBg = scene.create({t:"rect", fillColor:0x000000ff,x:0,y:0,w:1280,h:720,a:0,parent:scene.root});
   var childScene = scene.create({t:"scene", url: originalURL, parent:scene.root});
@@ -94,6 +108,16 @@ px.import({ scene: 'px:scene.1.js',
   // Prevent interaction with scenes...
   fpsBg.interactive      = false;
   fpsCounter.interactive = false;
+
+  scene.addServiceProvider(function(serviceName, serviceCtx){
+    if (serviceName == ".navigate")
+      // TODO JRJR have to set url in a timer to avoid reentrancy
+      // should move deferring to setUrl method... 
+      return {setUrl:function(u){setTimeout(function(){
+        childScene.url = u},1);}}  // return a javascript object that represents the service
+    else
+      return "allow"; // allow request to bubble to parent
+  });    
 
   function updateSize(w, h)
   {
@@ -219,10 +243,11 @@ if( scene.capabilities != undefined && scene.capabilities.graphics != undefined 
       else
       if(code == keys.H)  // ctrl-alt-shft-h
       {
-        // logger.message('info', "SHELL: onPreKeyDown: Loading HOME url [ "+"browser.js"+" ] !!!  ############# ");
+        // console.log("SHELL: onPreKeyDown: Loading HOME url [ "+defaultAppUrl+" ] !!!  ############# ");
 
-        var homeURL = "browser.js";
+        var homeURL = defaultAppUrl;
         logger.message('warn',"Loading home url: " + homeURL);
+
         childScene.url = homeURL;
         e.stopPropagation();
       }
@@ -284,7 +309,7 @@ if( scene.capabilities != undefined && scene.capabilities.graphics != undefined 
         else
         if (code == keys.H)  // ctrl-alt-h
         {
-          var homeURL = "browser.js";
+          var homeURL = defaultAppUrl;
           logger.message('warn', "Loading home url: " + homeURL);
           childScene.url = homeURL;
           e.stopPropagation();

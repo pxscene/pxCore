@@ -75,6 +75,12 @@ class pxConstantsDragType;
 
 #include "rtServiceProvider.h"
 #include "rtSettings.h"
+
+//#ifdef PXSCENE_SUPPORT_STORAGE
+#include "rtStorage.h"
+//#endif
+
+
 #ifdef RUNINMAIN
 #define ENTERSCENELOCK()
 #define EXITSCENELOCK() 
@@ -567,11 +573,14 @@ public:
       mGetScene->clearContext();
       mMakeReady->clearContext();
       mGetContextID->clearContext();
+      mGetSetting->clearContext();
+      mSetEffectiveUrl->clearContext();
 
       // TODO Given that the context is being cleared we likely don't need to zero these out
       mCtx->add("getScene", 0);
       mCtx->add("makeReady", 0);
-      mCtx->add("getContextID", 0);
+      mCtx->add("getSetting", 0);
+      mCtx->add("setEffectiveUrl", 0);
     }
 #endif //ENABLE_RT_NODE
 
@@ -626,6 +635,7 @@ public:
   }
 
   rtString getUrl() const { return mUrl; }
+  rtString getEffectiveUrl() const { return mEffectiveUrl; }
 
 #ifdef ENABLE_PERMISSIONS_CHECK
   rtError permissions(rtObjectRef& v) const { return mScene.get("permissions", v); }
@@ -655,6 +665,8 @@ protected:
   static rtError makeReady(int /*numArgs*/, const rtValue* /*args*/, rtValue* result, void* ctx);
 
   static rtError getContextID(int /*numArgs*/, const rtValue* /*args*/, rtValue* result, void* /*ctx*/);
+  static rtError getSetting(int numArgs, const rtValue* args, rtValue* result, void* /*ctx*/);
+  static rtError setEffectiveUrl(int numArgs, const rtValue* args, rtValue* result, void* ctx);
 
   virtual void onSize(int32_t w, int32_t h)
   {
@@ -806,6 +818,8 @@ protected:
   rtRef<rtFunctionCallback> mGetScene;
   rtRef<rtFunctionCallback> mMakeReady;
   rtRef<rtFunctionCallback> mGetContextID;
+  rtRef<rtFunctionCallback> mGetSetting;
+  rtRef<rtFunctionCallback> mSetEffectiveUrl;
 
 #ifdef ENABLE_RT_NODE
   rtScriptContextRef mCtx;
@@ -813,6 +827,7 @@ protected:
   pxIViewContainer* mViewContainer;
   unsigned long mRefCount;
   rtString mUrl;
+  rtString mEffectiveUrl;
 #ifndef RUNINMAIN
   rtString mLang;
 #endif
@@ -887,6 +902,10 @@ public:
   rtMethod1ArgAndReturn("sparkSetting", sparkSetting, rtString, rtValue);
   rtMethod1ArgAndNoReturn("addServiceProvider", addServiceProvider, rtFunctionRef);
   rtMethod1ArgAndNoReturn("removeServiceProvider", removeServiceProvider, rtFunctionRef);
+
+#ifdef PXSCENE_SUPPORT_STORAGE
+  rtReadOnlyProperty(storage,storage,rtObjectRef);
+#endif
 
 #ifdef ENABLE_PERMISSIONS_CHECK
   // permissions can be set to either scene or to its container
@@ -1183,6 +1202,10 @@ public:
     return mArchive;
   }
 
+#ifdef PXSCENE_SUPPORT_STORAGE
+  rtError storage(rtObjectRef& v) const;
+#endif
+
 private:
   bool bubbleEvent(rtObjectRef e, rtRef<pxObject> t, 
                    const char* preEvent, const char* event) ;
@@ -1236,6 +1259,7 @@ private:
   bool mPointerHidden;
   std::vector<rtObjectRef> mInnerpxObjects;
   rtFunctionRef mCustomAnimator;
+  rtString mEffectiveUrl;
 #ifdef ENABLE_PERMISSIONS_CHECK
   rtPermissionsRef mPermissions;
 #endif
@@ -1261,6 +1285,9 @@ public:
   bool mDisposed;
   std::vector<rtFunctionRef> mServiceProviders;
   bool mArchiveSet;
+//#ifdef PXSCENE_SUPPORT_STORAGE
+  mutable rtStorageRef mStorage;
+//#endif
 };
 
 // TODO do we need this anymore?
